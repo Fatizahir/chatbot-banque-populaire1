@@ -29,10 +29,10 @@ else:
     st.error("⚠️ Clé API introuvable. Veuillez ajouter 'GEMINI_API_KEY' dans les Secrets de Streamlit.")
     st.stop()
 
-# 3. Fausses métadonnées d'exemple pour le test
+# 3. Fausses métadonnées d'exemple pour le test (intégrées au prompt pour compatibilité)
 SYSTEM_INSTRUCTION = """
 Tu es 'Chaabi Assistant', un chatbot de démonstration pour une version fictive de la Banque Populaire du Maroc.
-Tu dois utiliser UNIQUEMENT ces fausses métadonnées d'exemple si on te pose des questions institutionnelles :
+Tu devez utiliser UNIQUEMENT ces fausses métadonnées d'exemple si on te pose des questions institutionnelles :
 - Nom officiel de simulation : Banque Populaire Fictionnelle (BPF)
 - Siège social fictif : 404, Avenue de l'Intelligence Artificielle, Quartier Cyber-Tech, Casablanca.
 - Numéro de Registre du Commerce (Faux) : RC Casa n° 999999-X
@@ -87,11 +87,19 @@ if user_input := st.chat_input("Posez votre question..."):
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         try:
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction=SYSTEM_INSTRUCTION)
-            prompt_final = user_input + (f"\n\n{document_context}" if document_context else "")
+            # MODIFICATION : Utilisation de gemini-pro pour éviter l'erreur 404 sur votre version de bibliothèque
+            model = genai.GenerativeModel(model_name="gemini-pro")
+            
+            # Injection des instructions directement dans le prompt final pour assurer la compatibilité maximale
+            prompt_final = f"{SYSTEM_INSTRUCTION}\n\nContexte actuel de la discussion :\n"
+            if document_context:
+                prompt_final += f"{document_context}\n"
+            prompt_final += f"Message de l'utilisateur : {user_input}"
+            
             response = model.generate_content(prompt_final)
             reponse_ia = response.text
             message_placeholder.markdown(reponse_ia)
             st.session_state.messages.append({"role": "assistant", "content": reponse_ia})
         except Exception as e:
             st.error(f"Erreur : {e}")
+            
